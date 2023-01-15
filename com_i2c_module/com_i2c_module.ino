@@ -61,7 +61,7 @@ void loop()
           badgeOk = false;
           needReset = false;
 
-          while(rfid.available() > 0) rfid.read();
+          while (rfid.available() > 0) rfid.read();
           while (Wire.available() > 0) Wire.read();
           digitalWrite(11, LOW);
         }
