@@ -22,12 +22,20 @@ char codeReset[7] = "197355";
 char inputReset[7] = "";
 int idxInputReset = 0;
 
+
+int lastSteadyState = LOW;       // the previous steady state from the input pin
+int lastFlickerableState = LOW;  // the previous flickerable state from the input pin
+int currentState;                // the current reading from the input pin
+unsigned long lastDebounceTime = 0;
+
 void setup()
 {
   pinMode(10, OUTPUT); //led verte
   pinMode(11, OUTPUT); //led rouge
   digitalWrite(10, LOW);
   digitalWrite(11, LOW);
+
+  pinMode(13, INPUT_PULLUP); //bouton reset
 
   Wire.begin();
   rfid.begin(9600);
@@ -38,13 +46,29 @@ void setup()
 //rouge : 38006553727C
 //bleu : 380018479EF9
 
+void(* resetFunc) (void) = 0;
+
 void loop()
 {
   Wire.requestFrom(8, 1);
   receiveEvent(10);
 
   char key = keypad.getKey();
-    
+
+  //bouton reset
+  currentState = digitalRead(13);
+
+  if (currentState != lastFlickerableState) {
+    lastDebounceTime = millis();
+    lastFlickerableState = currentState;
+  }
+
+  if ((millis() - lastDebounceTime) > 50) {
+    if (lastSteadyState == HIGH && currentState == LOW) resetFunc();
+    lastSteadyState = currentState;
+  }
+  //
+
   if (needReset)
   {
     digitalWrite(11, HIGH);
@@ -86,13 +110,18 @@ void loop()
       if (c > -1) myInput.concat(c);
     }
     
-    if (myInput.indexOf(code) > -1)
+    if (code.length() > 3)
     {
-      badgeOk = true;
-      digitalWrite(10, HIGH);
-      delay(500);
-      digitalWrite(10, LOW);
+      if (myInput.indexOf(code) > -1)
+      {
+        badgeOk = true;
+        digitalWrite(10, HIGH);
+        delay(500);
+        digitalWrite(10, LOW);
+      }
     }
+    else needReset = true;
+
     delay(200);
   }
   
